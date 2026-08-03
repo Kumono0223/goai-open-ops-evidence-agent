@@ -1,0 +1,188 @@
+{
+  "agent": "open-ops-evidence-agent",
+  "methodology_version": "2026.08-evidence-v2",
+  "policy": {
+    "version": "ops-review-policy-1.0",
+    "z_threshold": 2.0,
+    "critical_z": 2.5,
+    "critical_downtime_hours": 6.0
+  },
+  "input_evidence": {
+    "file_name": "maintenance.csv",
+    "sha256": "e6701c0ea79e9cb04e18b254b02c46d245cfb17e68417d60af5b8fe3b91efe55",
+    "bytes": 235,
+    "rows": 9,
+    "required_columns": [
+      "date",
+      "machine",
+      "downtime_hours",
+      "defects"
+    ],
+    "data_quality_issues": []
+  },
+  "workflow": [
+    {
+      "step": "ingest",
+      "state": "completed",
+      "evidence": "input_evidence.sha256"
+    },
+    {
+      "step": "profile",
+      "state": "completed",
+      "evidence": "profile"
+    },
+    {
+      "step": "detect",
+      "state": "completed",
+      "evidence": "evidence"
+    },
+    {
+      "step": "propose",
+      "state": "completed",
+      "evidence": "incidents"
+    },
+    {
+      "step": "approve_and_execute",
+      "state": "blocked",
+      "reason": "human_review_required"
+    }
+  ],
+  "profile": {
+    "rows": 9,
+    "columns": [
+      {
+        "name": "date",
+        "kind": "categorical",
+        "missing": 0,
+        "unique": 3
+      },
+      {
+        "name": "machine",
+        "kind": "categorical",
+        "missing": 0,
+        "unique": 3
+      },
+      {
+        "name": "downtime_hours",
+        "kind": "numeric",
+        "missing": 0,
+        "unique": 9,
+        "min": 0.8,
+        "max": 7.8,
+        "mean": 2.0222
+      },
+      {
+        "name": "defects",
+        "kind": "numeric",
+        "missing": 0,
+        "unique": 4,
+        "min": 1.0,
+        "max": 9.0,
+        "mean": 2.6667
+      }
+    ],
+    "numeric_columns": [
+      "defects",
+      "downtime_hours"
+    ],
+    "date_columns": [
+      "date"
+    ]
+  },
+  "tool_calls": [
+    {
+      "tool": "profile_csv",
+      "status": "completed"
+    },
+    {
+      "tool": "analyze_csv",
+      "query": "找出 downtime_hours 异常设备",
+      "status": "completed"
+    },
+    {
+      "tool": "analyze_csv",
+      "query": "按 date 看 downtime_hours 趋势",
+      "status": "completed"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "EV-001",
+      "kind": "statistical_outlier",
+      "machine": "M-02",
+      "period": "2026-08-03",
+      "metric": "downtime_hours",
+      "observed": 7.8,
+      "z_score": 2.802,
+      "threshold": 2.0,
+      "source_row": {
+        "date": "2026-08-03",
+        "machine": "M-02",
+        "downtime_hours": "7.8",
+        "defects": "9"
+      }
+    },
+    {
+      "evidence_id": "EV-002",
+      "kind": "period_trend",
+      "metric": "downtime_hours",
+      "series": [
+        {
+          "period": "2026-07-20",
+          "downtime_hours": 3.5
+        },
+        {
+          "period": "2026-07-27",
+          "downtime_hours": 4.0
+        },
+        {
+          "period": "2026-08-03",
+          "downtime_hours": 10.7
+        }
+      ],
+      "latest_delta_hours": 6.7,
+      "latest_delta_percent": 167.5
+    }
+  ],
+  "incidents": [
+    {
+      "incident_id": "INC-5782EC6871",
+      "machine": "M-02",
+      "period": "2026-08-03",
+      "severity": "critical",
+      "risk_score": 100,
+      "state": "proposed",
+      "decision": "human_approval_required",
+      "evidence_refs": [
+        "EV-001"
+      ],
+      "proposed_actions": [
+        {
+          "action": "核对对应时间窗的维护工单、传感器日志和排产变更",
+          "owner_role": "值班工程师",
+          "state": "awaiting_human_approval"
+        },
+        {
+          "action": "确认异常可复现后创建维护工单，并在下一周期验证",
+          "owner_role": "设备负责人",
+          "state": "blocked_until_review"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    "按 |z-score| >= 2.0 检测到 1 个异常值。",
+    "downtime_hours 从首个周期到末个周期变化 7.2。",
+    "最近周期停机时长环比 +167.50%（+6.70 小时）。"
+  ],
+  "priority_machines": [
+    "M-02"
+  ],
+  "human_review_required": true,
+  "production_actions_executed": false,
+  "limitations": [
+    "z-score 是小样本统计启发式，不构成设备根因诊断。",
+    "示例数据为合成数据；真实部署前必须接入权限、审计和工单系统。",
+    "Agent 只提出行动草案，不会自动停机、派单或更改生产系统。"
+  ]
+}
