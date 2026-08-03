@@ -126,7 +126,7 @@ def _intent(query: str) -> str:
     return "summary"
 
 
-def analyze_csv(csv_path: str | Path, query: str = "") -> dict[str, Any]:
+def analyze_csv(csv_path: str | Path, query: str = "", *, z_threshold: float = 2.0) -> dict[str, Any]:
     rows = _read_rows(csv_path)
     if not rows:
         return {"intent": "summary", "metrics": {"rows": 0}, "findings": [], "recommendations": []}
@@ -163,7 +163,9 @@ def analyze_csv(csv_path: str | Path, query: str = "") -> dict[str, Any]:
         mean = sum(n for _, n in clean) / len(clean)
         variance = sum((n - mean) ** 2 for _, n in clean) / len(clean)
         std = math.sqrt(variance)
-        threshold = 2.0
+        if z_threshold <= 0:
+            raise ValueError("z_threshold must be positive")
+        threshold = float(z_threshold)
         anomalies = [] if std == 0 else [{"row": row, "value": number, "z_score": round((number - mean) / std, 3)} for row, number in clean if abs((number - mean) / std) >= threshold]
         result["anomalies"] = anomalies
         result["findings"].append(f"按 |z-score| >= {threshold} 检测到 {len(anomalies)} 个异常值。")
